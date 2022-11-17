@@ -4,24 +4,9 @@ metadata:
   name: traefik-conf
 data:
   traefik.toml: |
-    defaultEntryPoints = ["https","http"]
-
-    [retry]
-    attempts = 3
-
-    [entryPoints]
-      [entryPoints.http]
-      address = ":80"
-      compress = true
-        [entryPoints.http.redirect]
-          entryPoint = "https"
-      [entryPoints.https]
-      address = ":443"
-      compress = true
-        [entryPoints.https.tls]
-          [[entryPoints.https.tls.certificates]]
-          CertFile = "tlscertificate/tls.crt"
-          KeyFile = "tlscertificate/tls.key"
+    [[tls.certificates]]
+      certFile = "/tlscertificate/tls.crt"
+      keyFile = "/tlscertificate/tls.key"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -51,9 +36,60 @@ spec:
         configMap:
           name: traefik-conf
       containers:
-      - image: traefik:1.7.34
+      - image: traefik:2.9.4
         name: traefik-ingress-lb
+        env:
+        - name: TRAEFIK_ENTRYPOINTS_PING
+          value: "true"
+        - name: TRAEFIK_ENTRYPOINTS_PING_ADDRESS
+          value: :8082
+        - name: TRAEFIK_ENTRYPOINTS_WEB
+          value: "true"
+        - name: TRAEFIK_ENTRYPOINTS_WEB_ADDRESS
+          value: :80
+        - name: TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO
+          value: websecure
+        - name: TRAEFIK_ENTRYPOINTS_WEBSECURE
+          value: "true"
+        - name: TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS
+          value: :443
+        - name: TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_TLS
+          value: "true"
+        - name: TRAEFIK_LOG
+          value: "true"
+        - name: TRAEFIK_LOG_LEVEL
+          value: INFO
+        - name: TRAEFIK_PING
+          value: "true"
+        - name: TRAEFIK_PING_ENTRYPOINT
+          value: ping
+        - name: TRAEFIK_PROVIDERS_FILE_DIRECTORY
+          value: "/config/"
+        - name: TRAEFIK_PROVIDERS_KUBERNETESCRD
+          value: "true"
+        - name: TRAEFIK_PROVIDERS_KUBERNETESINGRESS
+          value: "true"
         imagePullPolicy: Always
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ping
+            port: 8082
+            scheme: HTTP
+          initialDelaySeconds: 20
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 3
+        ports:
+        - containerPort: 80
+          name: traefik-http
+          protocol: TCP
+        - containerPort: 443
+          name: traefik-https
+          protocol: TCP
+        - containerPort: 8082
+          name: traefik-ping
+          protocol: TCP
         volumeMounts:
         - mountPath: "/tlscertificate"
           name: "tlscertificate"
@@ -63,16 +99,11 @@ spec:
           requests:
             cpu: 100m
             memory: 100Mi
-        ports:
-        - containerPort: 80
-        - containerPort: 443
-        args: 
-        - --configfile=/config/traefik.toml
-        - --kubernetes
-        - --file
-        - --file.directory=/config/
-        - --file.watch=true
-        - --logLevel=INFO
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      securityContext: {}
       tolerations:
       - key: frontend
         operator: Equal

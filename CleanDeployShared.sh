@@ -10,6 +10,7 @@ kubectl apply -f certificate.yml
 echo "------------------------"
 echo "Traefik"
 echo "------------------------"
+kubectl apply -f ../common/traefik-crd.yml
 kubectl apply -f ../common/traefik-role.yml
 kubectl apply -f traefik-service.yml
 kubectl apply -f ../common/traefik.yml
