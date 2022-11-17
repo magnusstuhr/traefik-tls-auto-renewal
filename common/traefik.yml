@@ -104,11 +104,6 @@ spec:
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       securityContext: {}
-      tolerations:
-      - key: frontend
-        operator: Equal
-        value: all
-        effect: NoSchedule
 ---
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
