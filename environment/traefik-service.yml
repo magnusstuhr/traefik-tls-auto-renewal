@@ -1,0 +1,18 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: traefik
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+  - name: https
+    port: 443
+  loadBalancerIP: 111.111.1.111
+  selector:
+    app: traefik-ingress-lb
+status:
+  loadBalancer:
+    ingress:
+    - ip: 111.111.1.111
